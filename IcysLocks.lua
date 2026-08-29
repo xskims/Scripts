@@ -2,39 +2,39 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Icy's Locks Script",
-   Icon = 0, -- Icon in Topbar. Can use Lucide Icons (string) or Roblox Image (number). 0 to use no icon (default).
+   Icon = 0,
    LoadingTitle = "Icy's Interface Suite",
    LoadingSubtitle = "by Icy",
-   Theme = "Ocean", -- Check https://docs.sirius.menu/rayfield/configuration/themes
+   Theme = "Ocean",
 
    DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false, -- Prevents Rayfield from warning when the script has a version mismatch with the interface
+   DisableBuildWarnings = false,
 
    ConfigurationSaving = {
       Enabled = true,
-      FolderName = nil, -- Create a custom folder for your hub/game
+      FolderName = nil,
       FileName = "Big Hub"
    },
 
    Discord = {
-      Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
-      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
-      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
    },
 
-   KeySystem = true, -- Set this to true to use our key system
+   KeySystem = true,
    KeySettings = {
       Title = "Icy's Lock | Key",
       Subtitle = "In Video Discription",
-      Note = "Join Discord For More", -- Use this to tell the user how to get a key
-      FileName = "IcysHoodKey", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
-      SaveKey = false, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-      GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-      Key = {"https://pastebin.com/raw/s1hjMkBe"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
+      Note = "Join Discord For More",
+      FileName = "IcysHoodKey",
+      SaveKey = false,
+      GrabKeyFromSite = true,
+      Key = {"https://pastebin.com/raw/s1hjMkBe"}
    }
 })
 
-local MainTab = Window:CreateTab("🏠 Home", nil) -- Title, Image
+local MainTab = Window:CreateTab("🏠 Home", nil)
 local MainSection = MainTab:CreateSection("Combat")
 
 Rayfield:Notify({
@@ -44,240 +44,538 @@ Rayfield:Notify({
    Image = nil,
 })
 
-local Button = MainTab:CreateButton({
+-----------------------------------------------------------
+-- AIM LOCK | Q
+-----------------------------------------------------------
+
+local AimLockButton = MainTab:CreateButton({
    Name = "Aim Lock | Q",
    Callback = function()
--- Aim Assist Script for Roblox (Da Hood-like game)
--- This script provides smooth camera control and helps aim at nearby players.
--- Aim assist can be toggled using the Q key, and it stays locked onto the first player it targets.
--- No target switching will occur.
 
-local player = game.Players.LocalPlayer
-local camera = game.Workspace.CurrentCamera
-local userInputService = game:GetService("UserInputService")
-local mouse = player:GetMouse()
+      local player = game.Players.LocalPlayer
+      local camera = game.Workspace.CurrentCamera
+      local userInputService = game:GetService("UserInputService")
 
--- Settings for Aim Assist
-local aimAssistRange = 50  -- Range in studs to detect enemies
-local aimSpeed = 0.2  -- Speed of smoothing the aim towards the target
-local lockedTarget = nil  -- Locked target for aim assist
+      local aimAssistRange = 50
+      local aimSpeed = 0.2
+      local lockedTarget = nil
+      local isAimAssistEnabled = false
 
--- Variable to track if Aim Assist is enabled
-local isAimAssistEnabled = false
+      local function createTargetIndicator(target)
+         if not target or not target.Character then
+            return
+         end
 
--- Visual Feedback: Show a red circle around the locked target (for demonstration purposes)
-local function createTargetIndicator(target)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Adornee = target.Character.HumanoidRootPart
-    billboard.Size = UDim2.new(0, 10, 0, 10)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)  -- Position the indicator slightly above the target
-    billboard.Parent = target.Character
+         local root = target.Character:FindFirstChild("HumanoidRootPart")
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red circle
-    frame.BackgroundTransparency = 0.5  -- Semi-transparent
-    frame.Parent = billboard
+         if not root then
+            return
+         end
 
-    return billboard
-end
+         local old = target.Character:FindFirstChild("IcyAimIndicator")
 
--- Remove the target indicator when no longer needed
-local function removeTargetIndicator(target)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        local billboard = target.Character:FindFirstChildOfClass("BillboardGui")
-        if billboard then
-            billboard:Destroy()
-        end
-    end
-end
+         if old then
+            old:Destroy()
+         end
 
--- Function to find the closest enemy within range
-local function getClosestEnemy()
-    local closestEnemy = nil
-    local shortestDistance = aimAssistRange  -- Start with a maximum distance
+         local billboard = Instance.new("BillboardGui")
+         billboard.Name = "IcyAimIndicator"
+         billboard.Adornee = root
+         billboard.Size = UDim2.new(0, 10, 0, 10)
+         billboard.StudsOffset = Vector3.new(0, 2, 0)
+         billboard.Parent = target.Character
 
-    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (player.Character.HumanoidRootPart.Position - otherPlayer.Character.HumanoidRootPart.Position).Magnitude
-            if distance < shortestDistance then
-                closestEnemy = otherPlayer
-                shortestDistance = distance
+         local frame = Instance.new("Frame")
+         frame.Size = UDim2.new(1, 0, 1, 0)
+         frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+         frame.BackgroundTransparency = 0.5
+         frame.Parent = billboard
+      end
+
+      local function removeTargetIndicator(target)
+         if target and target.Character then
+            local indicator = target.Character:FindFirstChild("IcyAimIndicator")
+
+            if indicator then
+               indicator:Destroy()
             end
-        end
-    end
+         end
+      end
 
-    return closestEnemy
-end
+      local function getClosestEnemy()
+         local closestEnemy = nil
+         local shortestDistance = aimAssistRange
 
--- Function to smoothly adjust the camera aim towards the target
-local function smoothCameraAim(target)
-    if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local targetPos = target.Character.HumanoidRootPart.Position
-    local targetDirection = (targetPos - camera.CFrame.Position).unit  -- Direction to the target
-    
-    -- Smoothly rotate the camera towards the target direction
-    local newCFrame = camera.CFrame:lerp(CFrame.lookAt(camera.CFrame.Position, targetPos), aimSpeed)
-    camera.CFrame = newCFrame
-end
+         if not player.Character then
+            return nil
+         end
 
--- Detect when the Q key is pressed to toggle Aim Assist
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    -- When the Q key is pressed, toggle the Aim Assist
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Q then
-        isAimAssistEnabled = not isAimAssistEnabled  -- Toggle Aim Assist state
-        
-        if isAimAssistEnabled then
-            -- If Aim Assist is enabled, lock onto the closest enemy
-            lockedTarget = getClosestEnemy()
-            if lockedTarget then
-                print("Aim Assist Enabled - Locked onto " .. lockedTarget.Name)
-                -- Create the target indicator
-                createTargetIndicator(lockedTarget)
+         local playerRoot = player.Character:FindFirstChild("HumanoidRootPart")
+
+         if not playerRoot then
+            return nil
+         end
+
+         for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+            if otherPlayer ~= player
+               and otherPlayer.Character
+               and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+               local distance =
+                  (playerRoot.Position -
+                  otherPlayer.Character.HumanoidRootPart.Position).Magnitude
+
+               if distance < shortestDistance then
+                  closestEnemy = otherPlayer
+                  shortestDistance = distance
+               end
+            end
+         end
+
+         return closestEnemy
+      end
+
+      local function smoothCameraAim(target)
+         if not target
+            or not target.Character
+            or not target.Character:FindFirstChild("HumanoidRootPart") then
+            return
+         end
+
+         local targetPos =
+            target.Character.HumanoidRootPart.Position
+
+         camera.CFrame =
+            camera.CFrame:Lerp(
+               CFrame.lookAt(camera.CFrame.Position, targetPos),
+               aimSpeed
+            )
+      end
+
+      userInputService.InputBegan:Connect(function(input, gameProcessed)
+
+         if gameProcessed then
+            return
+         end
+
+         if input.UserInputType == Enum.UserInputType.Keyboard
+            and input.KeyCode == Enum.KeyCode.Q then
+
+            isAimAssistEnabled = not isAimAssistEnabled
+
+            if isAimAssistEnabled then
+
+               lockedTarget = getClosestEnemy()
+
+               if lockedTarget then
+                  print(
+                     "Aim Assist Enabled - Locked onto "
+                     .. lockedTarget.Name
+                  )
+
+                  createTargetIndicator(lockedTarget)
+               else
+                  print("Aim Assist Enabled - No target in range")
+               end
+
             else
-                print("Aim Assist Enabled - No target in range")
-            end
-        else
-            -- If Aim Assist is disabled, unlock the target
-            print("Aim Assist Disabled")
-            -- Remove the target indicator
-            if lockedTarget then
-                removeTargetIndicator(lockedTarget)
-            end
-            lockedTarget = nil
-        end
-    end
-end)
 
--- Main loop to check for enemies and adjust camera when aiming
-game:GetService("RunService").Heartbeat:Connect(function()
-    if isAimAssistEnabled and lockedTarget then
-        -- If Aim Assist is enabled and there's a locked target, apply aim assist
-        smoothCameraAim(lockedTarget)
-    end
-end)
+               print("Aim Assist Disabled")
+
+               if lockedTarget then
+                  removeTargetIndicator(lockedTarget)
+               end
+
+               lockedTarget = nil
+            end
+         end
+      end)
+
+      game:GetService("RunService").Heartbeat:Connect(function()
+
+         if isAimAssistEnabled and lockedTarget then
+            smoothCameraAim(lockedTarget)
+         end
+
+      end)
+
+      Rayfield:Notify({
+         Title = "Aim Lock",
+         Content = "Aim Lock | Q loaded",
+         Duration = 2,
+      })
 
    end,
 })
 
-local Button = MainTab:CreateButton({
+-----------------------------------------------------------
+-- HEAD LOCK | E
+-----------------------------------------------------------
+
+local HeadLockButton = MainTab:CreateButton({
    Name = "Head Lock | E",
    Callback = function()
- -- Aim Assist Script for Roblox (Da Hood-like game)
--- This script provides smooth camera control and helps aim at nearby players' heads.
--- Aim assist can be toggled using the E key, and it stays locked onto the first player it targets.
--- No target switching will occur.
 
-local player = game.Players.LocalPlayer
-local camera = game.Workspace.CurrentCamera
-local userInputService = game:GetService("UserInputService")
-local mouse = player:GetMouse()
+      local player = game.Players.LocalPlayer
+      local camera = game.Workspace.CurrentCamera
+      local userInputService = game:GetService("UserInputService")
 
--- Settings for Aim Assist
-local aimAssistRange = 100  -- Range in studs to detect enemies
-local aimSpeed = 0.2  -- Speed of smoothing the aim towards the target
-local lockedTarget = nil  -- Locked target for aim assist
+      local aimAssistRange = 100
+      local aimSpeed = 0.2
+      local lockedTarget = nil
+      local isAimAssistEnabled = false
 
--- Variable to track if Aim Assist is enabled
-local isAimAssistEnabled = false
+      local function createTargetIndicator(target)
 
--- Visual Feedback: Show a red circle around the locked target (for demonstration purposes)
-local function createTargetIndicator(target)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Adornee = target.Character.Head  -- Use the Head part instead of HumanoidRootPart
-    billboard.Size = UDim2.new(0, 10, 0, 10)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)  -- Position the indicator slightly above the target
-    billboard.Parent = target.Character
+         if not target or not target.Character then
+            return
+         end
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red circle
-    frame.BackgroundTransparency = 0.5  -- Semi-transparent
-    frame.Parent = billboard
+         local head = target.Character:FindFirstChild("Head")
 
-    return billboard
-end
+         if not head then
+            return
+         end
 
--- Remove the target indicator when no longer needed
-local function removeTargetIndicator(target)
-    if target and target.Character and target.Character:FindFirstChild("Head") then
-        local billboard = target.Character:FindFirstChildOfClass("BillboardGui")
-        if billboard then
-            billboard:Destroy()
-        end
-    end
-end
+         local old =
+            target.Character:FindFirstChild("IcyHeadIndicator")
 
--- Function to find the closest enemy within range
-local function getClosestEnemy()
-    local closestEnemy = nil
-    local shortestDistance = aimAssistRange  -- Start with a maximum distance
+         if old then
+            old:Destroy()
+         end
 
-    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
-        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("Head") then
-            local distance = (player.Character.HumanoidRootPart.Position - otherPlayer.Character.Head.Position).Magnitude
-            if distance < shortestDistance then
-                closestEnemy = otherPlayer
-                shortestDistance = distance
+         local billboard = Instance.new("BillboardGui")
+         billboard.Name = "IcyHeadIndicator"
+         billboard.Adornee = head
+         billboard.Size = UDim2.new(0, 10, 0, 10)
+         billboard.StudsOffset = Vector3.new(0, 2, 0)
+         billboard.Parent = target.Character
+
+         local frame = Instance.new("Frame")
+         frame.Size = UDim2.new(1, 0, 1, 0)
+         frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+         frame.BackgroundTransparency = 0.5
+         frame.Parent = billboard
+      end
+
+      local function removeTargetIndicator(target)
+
+         if target and target.Character then
+
+            local indicator =
+               target.Character:FindFirstChild("IcyHeadIndicator")
+
+            if indicator then
+               indicator:Destroy()
             end
-        end
-    end
 
-    return closestEnemy
-end
+         end
+      end
 
--- Function to smoothly adjust the camera aim towards the target
-local function smoothCameraAim(target)
-    if not target or not target.Character or not target.Character:FindFirstChild("Head") then return end
-    
-    local targetPos = target.Character.Head.Position  -- Aim at the target's head
-    local targetDirection = (targetPos - camera.CFrame.Position).unit  -- Direction to the target
-    
-    -- Smoothly rotate the camera towards the target direction
-    local newCFrame = camera.CFrame:lerp(CFrame.lookAt(camera.CFrame.Position, targetPos), aimSpeed)
-    camera.CFrame = newCFrame
-end
+      local function getClosestEnemy()
 
--- Detect when the E key is pressed to toggle Aim Assist
-userInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    
-    -- When the E key is pressed, toggle the Aim Assist
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.E then
-        isAimAssistEnabled = not isAimAssistEnabled  -- Toggle Aim Assist state
-        
-        if isAimAssistEnabled then
-            -- If Aim Assist is enabled, lock onto the closest enemy
-            lockedTarget = getClosestEnemy()
-            if lockedTarget then
-                print("Aim Assist Enabled - Locked onto " .. lockedTarget.Name)
-                -- Create the target indicator
-                createTargetIndicator(lockedTarget)
+         local closestEnemy = nil
+         local shortestDistance = aimAssistRange
+
+         if not player.Character then
+            return nil
+         end
+
+         local playerRoot =
+            player.Character:FindFirstChild("HumanoidRootPart")
+
+         if not playerRoot then
+            return nil
+         end
+
+         for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+
+            if otherPlayer ~= player
+               and otherPlayer.Character
+               and otherPlayer.Character:FindFirstChild("Head") then
+
+               local distance =
+                  (playerRoot.Position -
+                  otherPlayer.Character.Head.Position).Magnitude
+
+               if distance < shortestDistance then
+                  closestEnemy = otherPlayer
+                  shortestDistance = distance
+               end
+
+            end
+         end
+
+         return closestEnemy
+      end
+
+      local function smoothCameraAim(target)
+
+         if not target
+            or not target.Character
+            or not target.Character:FindFirstChild("Head") then
+            return
+         end
+
+         local targetPos =
+            target.Character.Head.Position
+
+         camera.CFrame =
+            camera.CFrame:Lerp(
+               CFrame.lookAt(camera.CFrame.Position, targetPos),
+               aimSpeed
+            )
+      end
+
+      userInputService.InputBegan:Connect(function(input, gameProcessed)
+
+         if gameProcessed then
+            return
+         end
+
+         if input.UserInputType == Enum.UserInputType.Keyboard
+            and input.KeyCode == Enum.KeyCode.E then
+
+            isAimAssistEnabled = not isAimAssistEnabled
+
+            if isAimAssistEnabled then
+
+               lockedTarget = getClosestEnemy()
+
+               if lockedTarget then
+
+                  print(
+                     "Head Lock Enabled - Locked onto "
+                     .. lockedTarget.Name
+                  )
+
+                  createTargetIndicator(lockedTarget)
+
+               else
+
+                  print("Head Lock Enabled - No target in range")
+
+               end
+
             else
-                print("Aim Assist Enabled - No target in range")
-            end
-        else
-            -- If Aim Assist is disabled, unlock the target
-            print("Aim Assist Disabled")
-            -- Remove the target indicator
-            if lockedTarget then
-                removeTargetIndicator(lockedTarget)
-            end
-            lockedTarget = nil
-        end
-    end
-end)
 
--- Main loop to check for enemies and adjust camera when aiming
-game:GetService("RunService").Heartbeat:Connect(function()
-    if isAimAssistEnabled and lockedTarget then
-        -- If Aim Assist is enabled and there's a locked target, apply aim assist
-        smoothCameraAim(lockedTarget)
-    end
-end)
+               print("Head Lock Disabled")
+
+               if lockedTarget then
+                  removeTargetIndicator(lockedTarget)
+               end
+
+               lockedTarget = nil
+            end
+         end
+      end)
+
+      game:GetService("RunService").Heartbeat:Connect(function()
+
+         if isAimAssistEnabled and lockedTarget then
+            smoothCameraAim(lockedTarget)
+         end
+
+      end)
+
+      Rayfield:Notify({
+         Title = "Head Lock",
+         Content = "Head Lock | E loaded",
+         Duration = 2,
+      })
+
    end,
 })
 
+-----------------------------------------------------------
+-- TRAJECTORY VISUALIZER
+-----------------------------------------------------------
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local Knit = require(ReplicatedStorage.Packages.Knit)
+
+repeat
+   task.wait()
+until Knit.Player
+
+local PitchingController = Knit.GetController("PitchingController")
+
+local TrajectoryVisualizerEnabled = false
+local TrajectoryParts = {}
+
+local VisualFolder = Instance.new("Folder")
+VisualFolder.Name = "TrajectoryVisuals"
+VisualFolder.Parent = Workspace
+
+local function QuadraticBezier(p0, p1, p2, t)
+
+   local clamped = math.clamp(t, 0, 1)
+
+   return
+      (1 - clamped)^2 * p0 +
+      2 * (1 - clamped) * clamped * p1 +
+      clamped^2 * p2
+end
+
+local function ClearTrajectory()
+
+   for _, v in pairs(TrajectoryParts) do
+
+      if v and v.Parent then
+         v:Destroy()
+      end
+
+   end
+
+   table.clear(TrajectoryParts)
+end
+
+local function CreateLine(startPos, endPos)
+
+   local distance = (endPos - startPos).Magnitude
+
+   if distance <= 0 then
+      return
+   end
+
+   local line = Instance.new("Part")
+
+   line.Anchored = true
+   line.CanCollide = false
+   line.CanQuery = false
+   line.CanTouch = false
+
+   line.Material = Enum.Material.Neon
+   line.Color = Color3.fromRGB(0, 255, 255)
+
+   line.Size =
+      Vector3.new(0.12, 0.12, distance)
+
+   line.CFrame =
+      CFrame.lookAt(startPos, endPos)
+      * CFrame.new(0, 0, -distance / 2)
+
+   line.Parent = VisualFolder
+
+   table.insert(TrajectoryParts, line)
+end
+
+local function DrawTrajectory(startPos, controlPoint, endPos)
+
+   ClearTrajectory()
+
+   if not startPos
+      or not controlPoint
+      or not endPos then
+      return
+   end
+
+   local segments = 50
+
+   local lastPosition = startPos
+
+   for i = 1, segments do
+
+      local t = i / segments
+
+      local currentPosition =
+         QuadraticBezier(
+            startPos,
+            controlPoint,
+            endPos,
+            t
+         )
+
+      CreateLine(
+         lastPosition,
+         currentPosition
+      )
+
+      lastPosition = currentPosition
+   end
+end
+
+-- Prevent the ThrowPitch function from being hooked more than once.
+local OldThrowPitch =
+   PitchingController.ThrowPitch
+
+PitchingController.ThrowPitch =
+   function(self, pitcher, pitchData, throwType)
+
+      local result =
+         OldThrowPitch(
+            self,
+            pitcher,
+            pitchData,
+            throwType
+         )
+
+      if TrajectoryVisualizerEnabled
+         and pitchData then
+
+         local startPos = pitchData[2]
+         local controlPoint = pitchData[3]
+         local endPos = pitchData[4]
+
+         if startPos
+            and controlPoint
+            and endPos then
+
+            DrawTrajectory(
+               startPos,
+               controlPoint,
+               endPos
+            )
+         end
+      end
+
+      return result
+   end
+
+local TrajectoryToggle =
+   MainTab:CreateToggle({
+
+      Name = "Trajectory Visualizer",
+
+      CurrentValue = false,
+
+      Flag = "TrajectoryVisualizer",
+
+      Callback = function(Value)
+
+         TrajectoryVisualizerEnabled = Value
+
+         if not Value then
+            ClearTrajectory()
+         end
+
+         Rayfield:Notify({
+            Title = "Trajectory Visualizer",
+            Content =
+               Value
+               and "Trajectory Visualizer Enabled"
+               or "Trajectory Visualizer Disabled",
+            Duration = 2,
+         })
+
+      end,
+   })
+
+-----------------------------------------------------------
+-- CLEANUP
+-----------------------------------------------------------
+
+game:GetService("Players").LocalPlayer
+   .OnTeleport:Connect(function()
+
+      ClearTrajectory()
+
+      if VisualFolder then
+         VisualFolder:Destroy()
+      end
+
+   end)
+
+print("Icy's Locks Script loaded")
